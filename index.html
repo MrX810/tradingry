@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Trading Journal</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --primary: #2962ff;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --green: #00e676;
+            --red: #ff1744;
+            --border: #333333;
+            --input-bg: #2a2a2a;
+        }
+
+        body.light-mode {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #1a56db;
+            --text-main: #1c1e21;
+            --text-muted: #65676b;
+            --green: #00a859;
+            --red: #e02424;
+            --border: #e4e6eb;
+            --input-bg: #f3f4f6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overscroll-behavior: none;
+            overscroll-behavior-y: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding-bottom: 90px; 
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            transition: background-color 0.3s;
+        }
+
+        header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .view {
+            display: none;
+            padding: 15px;
+            flex-direction: column;
+            gap: 15px;
+            animation: fadeIn 0.3s;
+        }
+        .view.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            border: 1px solid var(--border);
+            user-select: none;
+        }
+
+        .stat-card.clickable {
+            cursor: pointer;
+            transition: transform 0.1s ease, border-color 0.2s ease;
+        }
+
+        .stat-card.clickable:active {
+            transform: scale(0.97);
+            border-color: var(--primary);
+        }
+
+        .stat-card .title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stat-card .value { font-size: 1.4rem; font-weight: 700; }
+        .value.profit { color: var(--green); }
+        .value.loss { color: var(--red); }
+        .value.neutral { color: var(--text-main); }
+
+        /* Chart Container */
+        .chart-container {
+            background-color: var(--card-bg);
+            padding: 15px 15px 10px 15px;
+            border-radius: 12px;
+            width: 100%;
+            height: 380px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+        }
+
+        .chart-title { font-size: 1rem; margin-bottom: 10px; font-weight: 600; }
+
+        /* Trades List */
+        .trade-item {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            transition: transform 0.1s ease, border-color 0.2s ease;
+        }
+
+        .trade-item:active {
+            transform: scale(0.98);
+            border-color: var(--primary);
+        }
+
+        .trade-info { display: flex; flex-direction: column; gap: 4px; }
+        .trade-symbol { font-weight: 600; font-size: 1rem; }
+        .trade-date { font-size: 0.75rem; color: var(--text-muted); }
+        .trade-result { font-weight: 600; font-size: 1.1rem; }
+
+        /* Settings View */
+        .settings-section {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-row select, .form-input {
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .settings-row select {
+            width: auto;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--red);
+            border: 1px solid var(--red);
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:active, .btn-secondary:active {
+            opacity: 0.8;
+            transform: scale(0.98);
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background-color: rgba(160, 160, 160, 0.15);
+            color: var(--text-muted);
+            width: fit-content;
+        }
+
+        /* Fixed Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            z-index: 100;
+            transition: background-color 0.3s;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.75rem;
+            width: 33%;
+        }
+
+        .nav-item.active { color: var(--primary); }
+        .nav-item i { font-size: 1.2rem; }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 30px 10px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="header-title" data-i18n="navHome">Übersicht</h1>
+    </header>
+
+    <!-- VIEW: HOME -->
+    <div id="view-home" class="view active">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="title" id="balanceLabel" data-i18n="balance">Kontostand (Demo)</span>
+                <span class="value" id="balanceValue">€10,450.00</span>
+            </div>
+            
+            <div class="stat-card clickable" id="profitCard" onclick="cycleProfitPeriod()">
+                <span class="title">
+                    <span id="profitLabel">Gewinn (Monat)</span>
+                </span>
+                <span class="value profit" id="profitValue">+€450.00</span>
+            </div>
+
+            <div class="stat-card">
+                <span class="title" data-i18n="winRate">Win Rate</span>
+                <span class="value" id="winRateValue">68%</span>
+            </div>
+
+            <div class="stat-card clickable" id="tradesCard" onclick="reloadApp()">
+                <span class="title">
+                    <span data-i18n="tradesCountLabel">Trades</span>
+                    <i class="fa-solid fa-arrows-rotate" id="tradesReloadIcon" style="font-size: 0.75rem; opacity: 0.7;"></i>
+                </span>
+                <span class="value" id="tradesCountValue">24</span>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title" data-i18n="chartTitle">Kontostand (Verlauf)</h2>
+            <div class="chart-wrapper">
+                <canvas id="incomeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: TRADES -->
+    <div id="view-trades" class="view">
+        <h2 class="chart-title" data-i18n="journalTitle">Trading Journal</h2>
+        <div id="tradesList" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Trades Liste -->
+        </div>
+    </div>
+
+    <!-- VIEW: SETTINGS -->
+    <div id="view-settings" class="view">
+        <h2 class="chart-title" data-i18n="settingsTitle">Einstellungen</h2>
+        
+        <!-- BROKER IMPORT SECTION -->
+        <div class="settings-section">
+            <h3 data-i18n="brokerConnection">Broker & Daten-Import</h3>
+            
+            <div id="brokerConnStatus" class="connection-status">
+                <i class="fa-solid fa-circle-info"></i> <span id="statusText">Demo / Kein Broker verbunden</span>
+            </div>
+
+            <div class="form-group">
+                <label data-i18n="selectBrokerLabel">Broker / Plattform wählen</label>
+                <select id="brokerSelect" class="form-input" onchange="onBrokerChange(this.value)">
+                    <option value="">-- Bitte wählen --</option>
+                    <optgroup label="TradingView Integration">
+                        <option value="tv_paper">TradingView Paper Trading</option>
+                        <option value="tv_webhook">TradingView Custom Webhook</option>
+                    </optgroup>
+                    <optgroup label="Top Broker & Börsen">
+                        <option value="ibkr">Interactive Brokers (IBKR)</option>
+                        <option value="tradovate">Tradovate</option>
+                        <option value="trade_station">TradeStation</option>
+                        <option value="binance">Binance</option>
+                        <option value="bybit">Bybit</option>
+                        <option value="bingx">BingX</option>
+                        <option value="bitget">Bitget</option>
+                        <option value="okx">OKX</option>
+                        <option value="coinbase">Coinbase Advanced</option>
+                        <option value="kraken">Kraken</option>
+                        <option value="metatrader4">MetaTrader 4 (MT4 EA)</option>
+                        <option value="metatrader5">MetaTrader 5 (MT5 EA)</option>
+                        <option value="ctrader">cTrader</option>
+                        <option value="ig">IG Index</option>
+                        <option value="cmc">CMC Markets</option>
+                        <option value="saxo">Saxo Bank</option>
+                        <option value="alpaca">Alpaca Trading</option>
+                        <option value="td_ameritrade">Charles Schwab / TD Ameritrade</option>
+                        <option value="etoro">eToro (CSV / API)</option>
+                        <option value="capital_com">Capital.com</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div id="apiFields" style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group">
+                    <label id="labelApiKey">API Key / Token</label>
+                    <input type="text" id="apiKeyInput" class="form-input" placeholder="Geben Sie den API Key ein">
+                </div>
+
+                <div class="form-group" id="groupApiSecret">
+                    <label id="labelApiSecret">API Secret Key</label>
+                    <input type="password" id="apiSecretInput" class="form-input" placeholder="Geben Sie den Secret Key ein">
+                </div>
+
+                <div class="form-group" id="groupAccountID">
+                    <label>Konto-ID (Optional)</label>
+                    <input type="text" id="accountIdInput" class="form-input" placeholder="z.B. U1234567">
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="saveAndConnectBroker()">
+                <i class="fa-solid fa-plug"></i> <span id="btnConnectText">Verbinden & Trades importieren</span>
+            </button>
+
+            <button class="btn-secondary" id="disconnectBrokerBtn" onclick="disconnectBroker()" style="display: none;">
+                <i class="fa-solid fa-unlink"></i> <span>Verbindung trennen (Demo-Modus)</span>
+            </button>
+        </div>
+
+        <div class="settings-section">
+            <h3 data-i18n="appDesign">App Design</h3>
+            <div class="settings-row">
+                <span data-i18n="appearance">Erscheinungsbild</span>
+                <select id="themeSelector" onchange="changeTheme(this.value)">
+                    <option value="system" data-i18n="optSystem">System Standard</option>
+                    <option value="dark" data-i18n="optDark">Dark Mode</option>
+                    <option value="light" data-i18n="optLight">Light Mode</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <span data-i18n="language">Sprache / Language</span>
+                <select id="langSelector" onchange="changeLanguage(this.value)">
+                    <option value="de">Deutsch</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <span data-i18n="defaultProfitLabel">Standard Profit-Ansicht</span>
+                <select id="defaultProfitSelector" onchange="changeDefaultProfit(this.value)">
+                    <option value="day" data-i18n="periodDay">Tag</option>
+                    <option value="week" data-i18n="periodWeek">Woche</option>
+                    <option value="month" data-i18n="periodMonth">Monat</option>
+                    <option value="year" data-i18n="periodYear">Jahr</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <span data-i18n="colorBalanceLabel">Kontostand einfärben</span>
+                <select id="colorBalanceSelector" onchange="changeBalanceColorSetting(this.value)">
+                    <option value="enabled" data-i18n="optEnabled">Aktiviert</option>
+                    <option value="disabled" data-i18n="optDisabled">Deaktiviert (Weiß)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active" onclick="switchView('home', 'navHome')">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span data-i18n="navHome">Übersicht</span>
+        </a>
+        <a href="#" class="nav-item" onclick="switchView('trades', 'navTrades')">
+            <i class="fa-solid fa-list-ul"></i>
+            <span data-i18n="navTrades">Trades</span>
+        </a>
+        <a href="#" class="nav-item" onclick="switchView('settings', 'navSettings')">
+            <i class="fa-solid fa-gear"></i>
+            <span data-i18n="navSettings">Settings</span>
+        </a>
+    </nav>
+
+    <script>
+        window.history.scrollRestoration = 'manual';
+        window.scrollTo(0, 0);
+
+        // --- 1. TRANSLATIONS (i18n) ---
+        const translations = {
+            de: {
+                navHome: "Übersicht",
+                navTrades: "Trades",
+                navSettings: "Settings",
+                balanceDemo: "Kontostand (Demo)",
+                balanceLive: "Kontostand (Broker Live)",
+                winRate: "Win Rate",
+                tradesCountLabel: "Trades",
+                chartTitle: "Kontostand (Verlauf)",
+                journalTitle: "Trading Journal",
+                settingsTitle: "Einstellungen",
+                brokerConnection: "Broker & Daten-Import",
+                selectBrokerLabel: "Broker / Plattform wählen",
+                appDesign: "App Design",
+                appearance: "Erscheinungsbild",
+                language: "Sprache / Language",
+                defaultProfitLabel: "Standard Profit-Ansicht",
+                colorBalanceLabel: "Kontostand einfärben",
+                optEnabled: "Aktiviert",
+                optDisabled: "Deaktiviert (Weiß)",
+                optSystem: "System Standard",
+                optDark: "Dark Mode",
+                optLight: "Light Mode",
+                periodDay: "Tag",
+                periodWeek: "Woche",
+                periodMonth: "Monat",
+                periodYear: "Jahr",
+                profitTitleDay: "Gewinn (Tag)",
+                profitTitleWeek: "Gewinn (Woche)",
+                profitTitleMonth: "Gewinn (Monat)",
+                profitTitleYear: "Gewinn (Jahr)",
+                noTradesYet: "Keine Live-Trades empfangen."
+            },
+            en: {
+                navHome: "Overview",
+                navTrades: "Trades",
+                navSettings: "Settings",
+                balanceDemo: "Account Balance (Demo)",
+                balanceLive: "Account Balance (Live)",
+                winRate: "Win Rate",
+                tradesCountLabel: "Trades",
+                chartTitle: "Balance History",
+                journalTitle: "Trading Journal",
+                settingsTitle: "Settings",
+                brokerConnection: "Broker & Data Import",
+                selectBrokerLabel: "Select Broker / Platform",
+                appDesign: "App Design",
+                appearance: "Appearance",
+                language: "Language / Sprache",
+                defaultProfitLabel: "Default Profit View",
+                colorBalanceLabel: "Color Account Balance",
+                optEnabled: "Enabled",
+                optDisabled: "Disabled (White)",
+                optSystem: "System Default",
+                optDark: "Dark Mode",
+                optLight: "Light Mode",
+                periodDay: "Day",
+                periodWeek: "Week",
+                periodMonth: "Month",
+                periodYear: "Year",
+                profitTitleDay: "Profit (Day)",
+                profitTitleWeek: "Profit (Week)",
+                profitTitleMonth: "Profit (Month)",
+                profitTitleYear: "Profit (Year)",
+                noTradesYet: "No live trades received."
+            }
+        };
+
+        let currentLang = localStorage.getItem('lang') || 'de';
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            updateTranslations();
+            updateProfitDisplay();
+            renderTrades();
+        }
+
+        function updateTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.innerText = translations[currentLang][key];
+                }
+            });
+            document.getElementById('langSelector').value = currentLang;
+            updateBalanceLabelText();
+        }
+
+        // --- 2. DEMO VS LIVE DATA ---
+        const demoPeriodData = {
+            day: { profit: "+€45.00", isProfit: true, titleKey: "profitTitleDay", winRate: "100%", trades: 2 },
+            week: { profit: "+€180.00", isProfit: true, titleKey: "profitTitleWeek", winRate: "75%", trades: 8 },
+            month: { profit: "+€450.00", isProfit: true, titleKey: "profitTitleMonth", winRate: "68%", trades: 24 },
+            year: { profit: "+€2,450.00", isProfit: true, titleKey: "profitTitleYear", winRate: "62%", trades: 142 }
+        };
+
+        const demoTrades = [
+            { id: 1, label: "NQ1! (Long)", tvSymbol: "CME_MINI:NQ1!", date: "Heute, 14:30", pnl: 125.00 },
+            { id: 2, label: "ES1! (Short)", tvSymbol: "CME_MINI:ES1!", date: "Gestern, 16:15", pnl: -50.00 },
+            { id: 3, label: "EURUSD (Long)", tvSymbol: "FX:EURUSD", date: "12. Okt, 09:00", pnl: 45.00 }
+        ];
+
+        function isBrokerConnected() {
+            return !!localStorage.getItem('connected_broker');
+        }
+
+        function getLiveTrades() {
+            return JSON.parse(localStorage.getItem('live_trades') || '[]');
+        }
+
+        function getLivePeriodData() {
+            const liveTrades = getLiveTrades();
+            if (liveTrades.length === 0) {
+                return {
+                    day: { profit: "€0.00", isProfit: true, titleKey: "profitTitleDay", winRate: "0%", trades: 0 },
+                    week: { profit: "€0.00", isProfit: true, titleKey: "profitTitleWeek", winRate: "0%", trades: 0 },
+                    month: { profit: "€0.00", isProfit: true, titleKey: "profitTitleMonth", winRate: "0%", trades: 0 },
+                    year: { profit: "€0.00", isProfit: true, titleKey: "profitTitleYear", winRate: "0%", trades: 0 }
+                };
+            }
+            
+            let totalPnl = 0;
+            let wins = 0;
+            liveTrades.forEach(t => {
+                totalPnl += t.pnl;
+                if (t.pnl > 0) wins++;
+            });
+            
+            const winRateStr = Math.round((wins / liveTrades.length) * 100) + '%';
+            const profitStr = (totalPnl >= 0 ? '+€' : '-€') + Math.abs(totalPnl).toFixed(2);
+
+            return {
+                day: { profit: profitStr, isProfit: totalPnl >= 0, titleKey: "profitTitleDay", winRate: winRateStr, trades: liveTrades.length },
+                week: { profit: profitStr, isProfit: totalPnl >= 0, titleKey: "profitTitleWeek", winRate: winRateStr, trades: liveTrades.length },
+                month: { profit: profitStr, isProfit: totalPnl >= 0, titleKey: "profitTitleMonth", winRate: winRateStr, trades: liveTrades.length },
+                year: { profit: profitStr, isProfit: totalPnl >= 0, titleKey: "profitTitleYear", winRate: winRateStr, trades: liveTrades.length }
+            };
+        }
+
+        // --- 3. THEME & BALANCE COLOR ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            document.getElementById('themeSelector').value = savedTheme;
+            applyTheme(savedTheme);
+
+            const balanceColorSetting = localStorage.getItem('balanceColorSetting') || 'enabled';
+            document.getElementById('colorBalanceSelector').value = balanceColorSetting;
+            updateBalanceDisplay();
+        }
+
+        function changeTheme(mode) {
+            localStorage.setItem('theme', mode);
+            applyTheme(mode);
+        }
+
+        function applyTheme(mode) {
+            const isSystemLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+            if (mode === 'light' || (mode === 'system' && isSystemLight)) {
+                document.body.classList.add('light-mode');
+            } else {
+                document.body.classList.remove('light-mode');
+            }
+        }
+
+        function changeBalanceColorSetting(value) {
+            localStorage.setItem('balanceColorSetting', value);
+            updateBalanceDisplay();
+        }
+
+        function updateBalanceDisplay() {
+            const balanceEl = document.getElementById('balanceValue');
+            const colorSetting = localStorage.getItem('balanceColorSetting') || 'enabled';
+            
+            let accountBalance = 10450.00;
+            let pnlVal = 450.00;
+
+            if (isBrokerConnected()) {
+                const liveTrades = getLiveTrades();
+                pnlVal = liveTrades.reduce((acc, curr) => acc + curr.pnl, 0);
+                accountBalance = 10000 + pnlVal;
+            }
+
+            balanceEl.innerText = `€${accountBalance.toLocaleString('de-DE', { minimumFractionDigits: 2 })}`;
+
+            if (colorSetting === 'enabled') {
+                if (pnlVal > 0) balanceEl.className = 'value profit';
+                else if (pnlVal < 0) balanceEl.className = 'value loss';
+                else balanceEl.className = 'value neutral';
+            } else {
+                balanceEl.className = 'value neutral';
+            }
+            updateBalanceLabelText();
+        }
+
+        function updateBalanceLabelText() {
+            const labelEl = document.getElementById('balanceLabel');
+            labelEl.innerText = isBrokerConnected() ? translations[currentLang].balanceLive : translations[currentLang].balanceDemo;
+        }
+
+        // --- 4. DYNAMISCHE TIME-FRAME METRIKEN ---
+        const periodOrder = ['day', 'week', 'month', 'year'];
+        let currentProfitPeriod = localStorage.getItem('defaultProfitPeriod') || 'month';
+
+        function initProfitPeriod() {
+            document.getElementById('defaultProfitSelector').value = currentProfitPeriod;
+            updateProfitDisplay();
+        }
+
+        function cycleProfitPeriod() {
+            const currentIndex = periodOrder.indexOf(currentProfitPeriod);
+            const nextIndex = (currentIndex + 1) % periodOrder.length;
+            currentProfitPeriod = periodOrder[nextIndex];
+            updateProfitDisplay();
+        }
+
+        function changeDefaultProfit(period) {
+            currentProfitPeriod = period;
+            localStorage.setItem('defaultProfitPeriod', period);
+            updateProfitDisplay();
+        }
+
+        function updateProfitDisplay() {
+            const periodData = isBrokerConnected() ? getLivePeriodData() : demoPeriodData;
+            const data = periodData[currentProfitPeriod];
+            
+            document.getElementById('profitLabel').innerText = translations[currentLang][data.titleKey];
+            const valEl = document.getElementById('profitValue');
+            valEl.innerText = data.profit;
+            valEl.className = 'value ' + (data.isProfit ? 'profit' : 'loss');
+
+            document.getElementById('winRateValue').innerText = data.winRate;
+            document.getElementById('tradesCountValue').innerText = data.trades;
+        }
+
+        function reloadApp() {
+            const icon = document.getElementById('tradesReloadIcon');
+            icon.classList.add('fa-spin');
+            setTimeout(() => {
+                location.reload();
+            }, 300);
+        }
+
+        // --- 5. VIEW NAVIGATION ---
+        function switchView(viewId, i18nKey) {
+            document.getElementById('header-title').innerText = translations[currentLang][i18nKey];
+
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            window.scrollTo(0, 0);
+        }
+
+        // --- 6. BROKER INTEGRATION LOGIC ---
+        function initBrokerConnection() {
+            const savedBroker = localStorage.getItem('connected_broker') || '';
+            const savedApiKey = localStorage.getItem('broker_api_key') || '';
+            
+            if (savedBroker) {
+                document.getElementById('brokerSelect').value = savedBroker;
+                onBrokerChange(savedBroker);
+                document.getElementById('apiKeyInput').value = savedApiKey;
+                setBrokerStatus(true, savedBroker);
+            } else {
+                setBrokerStatus(false);
+            }
+        }
+
+        function onBrokerChange(brokerVal) {
+            const labelKey = document.getElementById('labelApiKey');
+            const labelSecret = document.getElementById('labelApiSecret');
+            const groupSecret = document.getElementById('groupApiSecret');
+
+            if (brokerVal === 'tv_paper') {
+                labelKey.innerText = "TradingView Account Token / Session ID";
+                groupSecret.style.display = 'none';
+            } else if (brokerVal === 'tv_webhook') {
+                labelKey.innerText = "Webhook URL Endpoint";
+                labelSecret.innerText = "Secret Passphrase";
+                groupSecret.style.display = 'flex';
+            } else {
+                labelKey.innerText = "API Key / Access Token";
+                labelSecret.innerText = "API Secret / Private Key";
+                groupSecret.style.display = 'flex';
+            }
+        }
+
+        function saveAndConnectBroker() {
+            const broker = document.getElementById('brokerSelect').value;
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+
+            if (!broker) {
+                alert("Bitte wähle einen Broker oder TradingView aus.");
+                return;
+            }
+
+            localStorage.setItem('connected_broker', broker);
+            localStorage.setItem('broker_api_key', apiKey);
+
+            // Beispielhaft initialisierte Live-Import-Daten
+            const mockImportedTrades = [
+                { id: 101, label: "BTCUSDT (Long)", tvSymbol: "BINANCE:BTCUSDT", date: "Heute, 10:15", pnl: 280.50 },
+                { id: 102, label: "ETHUSDT (Short)", tvSymbol: "BINANCE:ETHUSDT", date: "Gestern, 18:30", pnl: -42.00 },
+                { id: 103, label: "NQ1! (Long)", tvSymbol: "CME_MINI:NQ1!", date: "10. Aug, 15:45", pnl: 190.00 }
+            ];
+            localStorage.setItem('live_trades', JSON.stringify(mockImportedTrades));
+
+            setBrokerStatus(true, broker);
+            updateBalanceDisplay();
+            updateProfitDisplay();
+            renderTrades();
+        }
+
+        function disconnectBroker() {
+            localStorage.removeItem('connected_broker');
+            localStorage.removeItem('broker_api_key');
+            localStorage.removeItem('live_trades');
+
+            document.getElementById('brokerSelect').value = '';
+            document.getElementById('apiKeyInput').value = '';
+            document.getElementById('apiSecretInput').value = '';
+            
+            setBrokerStatus(false);
+            updateBalanceDisplay();
+            updateProfitDisplay();
+            renderTrades();
+        }
+
+        function setBrokerStatus(isConnected, brokerName = '') {
+            const statusEl = document.getElementById('brokerConnStatus');
+            const disconnectBtn = document.getElementById('disconnectBrokerBtn');
+
+            if (isConnected) {
+                statusEl.style.backgroundColor = 'rgba(0, 230, 118, 0.15)';
+                statusEl.style.color = 'var(--green)';
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>Verbunden mit: <strong>${brokerName.toUpperCase()}</strong></span>`;
+                disconnectBtn.style.display = 'flex';
+            } else {
+                statusEl.style.backgroundColor = 'rgba(160, 160, 160, 0.15)';
+                statusEl.style.color = 'var(--text-muted)';
+                statusEl.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>Demo-Modus / Kein Broker</span>`;
+                disconnectBtn.style.display = 'none';
+            }
+        }
+
+        // --- 7. TRADES LISTE ---
+        function renderTrades() {
+            const container = document.getElementById('tradesList');
+            container.innerHTML = '';
+
+            const trades = isBrokerConnected() ? getLiveTrades() : demoTrades;
+
+            if (trades.length === 0) {
+                container.innerHTML = `<div class="empty-state">${translations[currentLang].noTradesYet}</div>`;
+                return;
+            }
+
+            trades.forEach(trade => {
+                const pnlText = trade.pnl >= 0 ? `+€${trade.pnl.toFixed(2)}` : `-€${Math.abs(trade.pnl).toFixed(2)}`;
+                const pnlColor = trade.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+                const tvUrl = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(trade.tvSymbol)}`;
+
+                const html = `
+                    <a href="${tvUrl}" target="_blank" rel="noopener noreferrer" class="trade-item">
+                        <div class="trade-info">
+                            <span class="trade-symbol">${trade.label}</span>
+                            <span class="trade-date">${trade.date}</span>
+                        </div>
+                        <span class="trade-result" style="color: ${pnlColor};">${pnlText}</span>
+                    </a>
+                `;
+                container.innerHTML += html;
+            });
+        }
+
+        // --- 8. INIT APP ---
+        window.onload = () => {
+            window.scrollTo(0, 0);
+            initTheme();
+            initBrokerConnection();
+            initProfitPeriod();
+            updateTranslations();
+            renderTrades();
+
+            // Chart Init
+            const ctx = document.getElementById('incomeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+                    datasets: [{
+                        label: 'Kontostand (€)',
+                        data: [10000, 10150, 10100, 10300, 10250, 10400, 10450],
+                        borderColor: '#2962ff',
+                        backgroundColor: 'rgba(41, 98, 255, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHitRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            bottom: 10,
+                            top: 5
+                        }
+                    },
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { 
+                            grid: { display: false, drawBorder: false }, 
+                            ticks: { 
+                                color: '#a0a0a0',
+                                font: { size: 11 },
+                                padding: 5
+                            } 
+                        },
+                        y: { 
+                            grid: { color: 'rgba(160, 160, 160, 0.1)', drawBorder: false }, 
+                            ticks: { 
+                                color: '#a0a0a0', 
+                                maxTicksLimit: 6,
+                                font: { size: 11 }
+                            } 
+                        }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
