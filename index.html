@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daytrading Paper-Journal</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --text-main: #c9d1d9;
+            --accent: #58a6ff;
+            --profit: #3fb950;
+            --loss: #f85149;
+            --border: #30363d;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 { margin: 0; font-size: 24px; color: #fff; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-card {
+            background-color: var(--bg-color);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stat-card h3 { margin: 0 0 10px 0; font-size: 14px; color: #8b949e; }
+        .stat-card .value { font-size: 24px; font-weight: bold; color: #fff; }
+        .profit-text { color: var(--profit); }
+        .loss-text { color: var(--loss); }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 12px;
+        }
+
+        label { margin-bottom: 5px; font-size: 14px; }
+        input, select, button {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        button {
+            background-color: var(--accent);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #1f6feb; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        th { background-color: var(--panel-bg); }
+        
+        /* TradingView Widget Container */
+        .tradingview-widget-container { height: 400px; width: 100%; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📈 Paper Trading Dashboard</h1>
+        <div>Startkapital: <strong style="color: var(--accent)">10.000 €</strong></div>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Linke Seite: Chart -->
+        <div class="panel">
+            <h2>Markt-Übersicht</h2>
+            <!-- TradingView Widget BEGIN -->
+            <div class="tradingview-widget-container">
+              <div id="tradingview_chart"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+              <script type="text/javascript">
+              new TradingView.widget({
+                "autosize": true,
+                "symbol": "NASDAQ:AAPL",
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "de_DE",
+                "enable_publishing": false,
+                "backgroundColor": "#161b22",
+                "gridColor": "#30363d",
+                "hide_top_toolbar": true,
+                "save_image": false,
+                "container_id": "tradingview_chart"
+              });
+              </script>
+            </div>
+            <!-- TradingView Widget END -->
+        </div>
+
+        <!-- Rechte Seite: Neue Trades & Stats -->
+        <div class="panel">
+            <h2>Deine Stats</h2>
+            <div class="stats-grid" id="stats">
+                <div class="stat-card">
+                    <h3>Total PnL</h3>
+                    <div class="value" id="totalPnl">0.00 €</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Win Rate</h3>
+                    <div class="value" id="winRate">0 %</div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 30px;">Neuen Trade eintragen</h2>
+            <form id="tradeForm">
+                <div class="form-group">
+                    <label>Asset (z.B. EURUSD)</label>
+                    <input type="text" id="asset" required placeholder="Asset">
+                </div>
+                <div class="form-group">
+                    <label>Richtung</label>
+                    <select id="direction">
+                        <option value="Long">Long (Kauf)</option>
+                        <option value="Short">Short (Verkauf)</option>
+                    </select>
+                </div>
+                <div class="stats-grid">
+                    <div class="form-group">
+                        <label>Einstieg (€)</label>
+                        <input type="number" step="0.01" id="entry" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ausstieg (€)</label>
+                        <input type="number" step="0.01" id="exit" required>
+                    </div>
+                </div>
+                <button type="submit">Trade speichern</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Unterer Bereich: Trade Historie -->
+    <div class="panel">
+        <h2>Trading Tagebuch</h2>
+        <table id="tradeTable">
+            <thead>
+                <tr>
+                    <th>Asset</th>
+                    <th>Richtung</th>
+                    <th>Einstieg</th>
+                    <th>Ausstieg</th>
+                    <th>Gewinn/Verlust</th>
+                </tr>
+            </thead>
+            <tbody id="tradeLog">
+                <!-- Trades werden hier via JS eingefügt -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let trades = [];
+
+        document.getElementById('tradeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const asset = document.getElementById('asset').value;
+            const direction = document.getElementById('direction').value;
+            const entry = parseFloat(document.getElementById('entry').value);
+            const exit = parseFloat(document.getElementById('exit').value);
+            
+            // Berechne PnL (vereinfacht: Differenz)
+            let pnl = 0;
+            if (direction === 'Long') {
+                pnl = exit - entry;
+            } else {
+                pnl = entry - exit; // Bei Short ist ein fallender Preis ein Gewinn
+            }
+
+            trades.push({ asset, direction, entry, exit, pnl });
+            updateDashboard();
+            this.reset();
+        });
+
+        function updateDashboard() {
+            const tbody = document.getElementById('tradeLog');
+            tbody.innerHTML = '';
+            
+            let totalPnl = 0;
+            let wins = 0;
+
+            trades.forEach(trade => {
+                totalPnl += trade.pnl;
+                if (trade.pnl > 0) wins++;
+
+                const row = document.createElement('tr');
+                const pnlClass = trade.pnl >= 0 ? 'profit-text' : 'loss-text';
+                const pnlSign = trade.pnl > 0 ? '+' : '';
+                
+                row.innerHTML = `
+                    <td><strong>${trade.asset.toUpperCase()}</strong></td>
+                    <td>${trade.direction}</td>
+                    <td>${trade.entry.toFixed(2)} €</td>
+                    <td>${trade.exit.toFixed(2)} €</td>
+                    <td class="${pnlClass}">${pnlSign}${trade.pnl.toFixed(2)} €</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Update Stats
+            const pnlElement = document.getElementById('totalPnl');
+            pnlElement.textContent = `${totalPnl > 0 ? '+' : ''}${totalPnl.toFixed(2)} €`;
+            pnlElement.className = 'value ' + (totalPnl >= 0 ? 'profit-text' : 'loss-text');
+
+            const winRate = trades.length > 0 ? Math.round((wins / trades.length) * 100) : 0;
+            document.getElementById('winRate').textContent = `${winRate} %`;
+        }
+    </script>
+</body>
+</html>
